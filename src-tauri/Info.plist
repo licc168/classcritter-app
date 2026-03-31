@@ -6,5 +6,7 @@
 	<string>校园灵宠</string>
 	<key>CFBundleName</key>
 	<string>校园灵宠</string>
+	<key>LSHasLocalizedDisplayName</key>
+	<true/>
 </dict>
 </plist>
