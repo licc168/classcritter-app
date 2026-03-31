@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "校园灵宠",
-  "version": "1.0.0",
+  "productName": "ClassCritter",
+  "version": "1.0.1",
   "identifier": "com.epet.school.app",
   "build": {
     "devUrl": "https://epet.school",
@@ -30,6 +30,11 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "infoPlist": {
+        "CFBundleDisplayName": "校园灵宠"
+      }
+    }
   }
 }
