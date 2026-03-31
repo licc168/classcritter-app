@@ -32,9 +32,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "infoPlist": {
-        "CFBundleDisplayName": "校园灵宠"
-      }
+      "infoPlist": "Info.plist"
     }
   }
 }
