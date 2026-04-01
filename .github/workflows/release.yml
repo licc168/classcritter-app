@@ -53,11 +53,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version
+          tagName: app-v__VERSION__
           releaseName: "校园灵宠 v__VERSION__"
           releaseBody: "校园灵宠桌面版自动构建版本。"
-          # 强制重命名发布产物为 ASCII 字符，避免中文导致的下载或显示异常
-          releaseAssetNamePattern: "classcritter_[version]_[platform]_[arch].[ext]"
+          # 用正确的参数名 assetNamePattern，硬编码 classcritter 前缀避免中文被剥离
+          assetNamePattern: "classcritter-[version]-[platform]-[arch][ext]"
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
