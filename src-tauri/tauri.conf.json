@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "classcritter",
+  "productName": "校园灵宠",
   "version": "1.0.5",
   "identifier": "com.epet.school.app",
   "build": {
