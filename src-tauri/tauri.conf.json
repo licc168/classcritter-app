@@ -1,12 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "校园灵宠",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "identifier": "com.epet.school.app",
   "build": {
-    "beforeBuildCommand": "pnpm build",
     "devUrl": "https://epet.school",
-    "frontendDist": "../dist"
+    "frontendDist": "https://epet.school"
   },
   "app": {
     "windows": [
