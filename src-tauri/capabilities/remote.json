@@ -1,11 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Capability for the main window",
+  "identifier": "remote-domain",
   "windows": ["main", "floating", "summon", "summon-*"],
+  "remote": {
+    "urls": ["https://epet.school", "https://epet.school/*", "http://localhost:3000", "http://localhost:3000/*"]
+  },
   "permissions": [
     "core:default",
-    "opener:default",
     "core:window:default",
     "core:window:allow-start-dragging",
     "core:window:allow-create",

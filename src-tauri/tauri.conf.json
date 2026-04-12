@@ -4,19 +4,13 @@
   "version": "1.0.8",
   "identifier": "com.epet.school.app",
   "build": {
-    "devUrl": "https://epet.school",
-    "frontendDist": "https://epet.school"
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "title": "校园灵宠",
-        "width": 1280,
-        "height": 800,
-        "center": true,
-        "zoomHotkeysEnabled": true
-      }
-    ],
+    "macOSPrivateApi": true,
     "security": {
       "csp": null
     }
