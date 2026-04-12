@@ -89,37 +89,7 @@ jobs:
             SIG_MAC_UNIV=$(cat classcritter-${VERSION_NUM}-universal-apple-darwin.app.tar.gz.sig 2>/dev/null || echo "")
             SIG_WIN_X64=$(cat classcritter-${VERSION_NUM}-windows-x64.exe.sig 2>/dev/null || echo "")
 
-            VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" python3 - <<'PY'
-            import json
-            import os
-            from pathlib import Path
-
-            version = os.environ["VERSION_NUM"]
-            payload = {
-                "version": version,
-                "notes": f"更新了版本 {version}",
-                "pub_date": os.environ["PUB_DATE"],
-                "platforms": {
-                    "darwin-aarch64": {
-                        "signature": os.environ["SIG_MAC_UNIV"],
-                        "url": f"https://image.albumshare.cn/updater/classcritter-{version}-darwin-universal.app.tar.gz",
-                    },
-                    "darwin-x86_64": {
-                        "signature": os.environ["SIG_MAC_UNIV"],
-                        "url": f"https://image.albumshare.cn/updater/classcritter-{version}-darwin-universal.app.tar.gz",
-                    },
-                    "windows-x86_64": {
-                        "signature": os.environ["SIG_WIN_X64"],
-                        "url": f"https://image.albumshare.cn/updater/classcritter-{version}-windows-x64.exe",
-                    },
-                },
-            }
-
-            Path("latest.json").write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
-            )
-            PY
+            VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" python3 -c 'import json, os, pathlib; version = os.environ["VERSION_NUM"]; payload = {"version": version, "notes": f"更新了版本 {version}", "pub_date": os.environ["PUB_DATE"], "platforms": {"darwin-aarch64": {"signature": os.environ["SIG_MAC_UNIV"], "url": f"https://image.albumshare.cn/updater/classcritter-{version}-darwin-universal.app.tar.gz"}, "darwin-x86_64": {"signature": os.environ["SIG_MAC_UNIV"], "url": f"https://image.albumshare.cn/updater/classcritter-{version}-darwin-universal.app.tar.gz"}, "windows-x86_64": {"signature": os.environ["SIG_WIN_X64"], "url": f"https://image.albumshare.cn/updater/classcritter-{version}-windows-x64.exe"}}}; pathlib.Path("latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")'
           else
             # 替换 latest.json 中的 github 下载链接为 OSS 的 CDN 链接
             sed -i 's|https://github.com/[^/]*/[^/]*/releases/download/[^/]*/|https://image.albumshare.cn/updater/|g' latest.json
