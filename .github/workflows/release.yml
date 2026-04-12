@@ -76,12 +76,14 @@ jobs:
           cd release_assets
           # 等待一下确保 release 已经完全 ready
           sleep 10
-          # 下载该 tag 对应的所有 Release 附件
-          gh release download app-${{ github.ref_name }} --repo ${{ github.repository }}
+          # 下载该 tag 对应的所有 Release 附件，包括 latest.json
+          gh release download app-${{ github.ref_name }} --repo ${{ github.repository }} --pattern "*"
           
-          # 替换 latest.json 中的 github 下载链接为 OSS 的 CDN 链接
+          # 检查 latest.json 是否存在并替换链接
           if [ -f "latest.json" ]; then
             sed -i 's|https://github.com/[^/]*/[^/]*/releases/download/[^/]*/|https://image.albumshare.cn/updater/|g' latest.json
+          else
+            echo "Warning: latest.json not found in release assets"
           fi
 
       - name: Upload to Aliyun OSS
