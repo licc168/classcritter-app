@@ -93,25 +93,25 @@ jobs:
             SIG_WIN_X64=$(cat classcritter-${VERSION_NUM}-windows-x64.exe.sig 2>/dev/null || echo "")
             
             cat > latest.json << EOF
-            {
-              "version": "${VERSION_NUM}",
-              "notes": "更新了版本 ${VERSION_NUM}",
-              "pub_date": "${PUB_DATE}",
-              "platforms": {
-                "darwin-aarch64": {
-                  "signature": "${SIG_MAC_UNIV}",
-                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION_NUM}-darwin-universal.app.tar.gz"
-                },
-                "darwin-x86_64": {
-                  "signature": "${SIG_MAC_UNIV}",
-                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION_NUM}-darwin-universal.app.tar.gz"
-                },
-                "windows-x86_64": {
-                  "signature": "${SIG_WIN_X64}",
-                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION_NUM}-windows-x64.exe"
-                }
-              }
-            }
+{
+  "version": "${VERSION_NUM}",
+  "notes": "更新了版本 ${VERSION_NUM}",
+  "pub_date": "${PUB_DATE}",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "${SIG_MAC_UNIV}",
+      "url": "https://image.albumshare.cn/updater/classcritter-${VERSION_NUM}-darwin-universal.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "${SIG_MAC_UNIV}",
+      "url": "https://image.albumshare.cn/updater/classcritter-${VERSION_NUM}-darwin-universal.app.tar.gz"
+    },
+    "windows-x86_64": {
+      "signature": "${SIG_WIN_X64}",
+      "url": "https://image.albumshare.cn/updater/classcritter-${VERSION_NUM}-windows-x64.exe"
+    }
+  }
+}
 EOF
           else
             # 替换 latest.json 中的 github 下载链接为 OSS 的 CDN 链接
