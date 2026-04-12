@@ -135,7 +135,9 @@ pub fn run() {
                     // 启动时自动检查更新
                     if (window.__TAURI_INTERNALS__) {
                         setTimeout(() => {
-                            window.__TAURI_INTERNALS__.invoke('check_for_updates');
+                            window.__TAURI_INTERNALS__.invoke('check_for_updates').catch(err => {
+                                console.log("检查更新失败 (可能是本地开发环境未打签名包): ", err);
+                            });
                         }, 5000); // 延迟 5 秒检查，不阻碍主界面加载
                     }
                 });
