@@ -35,7 +35,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://image.albumshare.cn/updater/latest.json"
+        "https://liccimages.oss-cn-beijing.aliyuncs.com/updater/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY2OUVFOEFGNzIyMkNFMgpSV1RpTENMM2l1NXBEd21za25zeXJ3eUI0Qys3eERET0NkZHpFVmZhSTJ4VHhSUjdvSExkVTBPUgo=",
       "dialog": true
