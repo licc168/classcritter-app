@@ -76,14 +76,45 @@ jobs:
           cd release_assets
           # 等待一下确保 release 已经完全 ready
           sleep 10
-          # 下载该 tag 对应的所有 Release 附件，包括 latest.json
+          # 下载该 tag 对应的所有 Release 附件
           gh release download app-${{ github.ref_name }} --repo ${{ github.repository }} --pattern "*"
           
-          # 检查 latest.json 是否存在并替换链接
-          if [ -f "latest.json" ]; then
-            sed -i 's|https://github.com/[^/]*/[^/]*/releases/download/[^/]*/|https://image.albumshare.cn/updater/|g' latest.json
+          # 手动生成一个 latest.json 如果 github release 里没有
+          # 因为 tauri-action 可能默认没有上传 latest.json 到 release asset 中
+          if [ ! -f "latest.json" ]; then
+            echo "Generating latest.json manually..."
+            VERSION="${{ github.ref_name }}"
+            PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            
+            # 提取签名内容
+            SIG_MAC_AARCH64=$(cat classcritter-${VERSION}-aarch64-apple-darwin.tar.gz.sig 2>/dev/null || echo "")
+            SIG_MAC_X64=$(cat classcritter-${VERSION}-x86_64-apple-darwin.tar.gz.sig 2>/dev/null || echo "")
+            SIG_WIN_X64=$(cat classcritter-${VERSION}-x86_64-pc-windows-msvc.zip.sig 2>/dev/null || echo "")
+            
+            cat > latest.json << EOF
+            {
+              "version": "${VERSION}",
+              "notes": "更新了版本 ${VERSION}",
+              "pub_date": "${PUB_DATE}",
+              "platforms": {
+                "darwin-aarch64": {
+                  "signature": "${SIG_MAC_AARCH64}",
+                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION}-aarch64-apple-darwin.tar.gz"
+                },
+                "darwin-x86_64": {
+                  "signature": "${SIG_MAC_X64}",
+                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION}-x86_64-apple-darwin.tar.gz"
+                },
+                "windows-x86_64": {
+                  "signature": "${SIG_WIN_X64}",
+                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION}-x86_64-pc-windows-msvc.zip"
+                }
+              }
+            }
+            EOF
           else
-            echo "Warning: latest.json not found in release assets"
+            # 替换 latest.json 中的 github 下载链接为 OSS 的 CDN 链接
+            sed -i 's|https://github.com/[^/]*/[^/]*/releases/download/[^/]*/|https://image.albumshare.cn/updater/|g' latest.json
           fi
 
       - name: Upload to Aliyun OSS
