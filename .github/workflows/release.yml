@@ -84,34 +84,35 @@ jobs:
           if [ ! -f "latest.json" ]; then
             echo "Generating latest.json manually..."
             VERSION="${{ github.ref_name }}"
+            # 去除前缀 v
+            VERSION_NUM=${VERSION#v}
             PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
             
             # 提取签名内容
-            SIG_MAC_AARCH64=$(cat classcritter-${VERSION}-aarch64-apple-darwin.tar.gz.sig 2>/dev/null || echo "")
-            SIG_MAC_X64=$(cat classcritter-${VERSION}-x86_64-apple-darwin.tar.gz.sig 2>/dev/null || echo "")
-            SIG_WIN_X64=$(cat classcritter-${VERSION}-x86_64-pc-windows-msvc.zip.sig 2>/dev/null || echo "")
+            SIG_MAC_UNIV=$(cat classcritter-${VERSION_NUM}-universal-apple-darwin.app.tar.gz.sig 2>/dev/null || echo "")
+            SIG_WIN_X64=$(cat classcritter-${VERSION_NUM}-windows-x64.exe.sig 2>/dev/null || echo "")
             
             cat > latest.json << EOF
             {
-              "version": "${VERSION}",
-              "notes": "更新了版本 ${VERSION}",
+              "version": "${VERSION_NUM}",
+              "notes": "更新了版本 ${VERSION_NUM}",
               "pub_date": "${PUB_DATE}",
               "platforms": {
                 "darwin-aarch64": {
-                  "signature": "${SIG_MAC_AARCH64}",
-                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION}-aarch64-apple-darwin.tar.gz"
+                  "signature": "${SIG_MAC_UNIV}",
+                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION_NUM}-darwin-universal.app.tar.gz"
                 },
                 "darwin-x86_64": {
-                  "signature": "${SIG_MAC_X64}",
-                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION}-x86_64-apple-darwin.tar.gz"
+                  "signature": "${SIG_MAC_UNIV}",
+                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION_NUM}-darwin-universal.app.tar.gz"
                 },
                 "windows-x86_64": {
                   "signature": "${SIG_WIN_X64}",
-                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION}-x86_64-pc-windows-msvc.zip"
+                  "url": "https://image.albumshare.cn/updater/classcritter-${VERSION_NUM}-windows-x64.exe"
                 }
               }
             }
-            EOF
+EOF
           else
             # 替换 latest.json 中的 github 下载链接为 OSS 的 CDN 链接
             sed -i 's|https://github.com/[^/]*/[^/]*/releases/download/[^/]*/|https://image.albumshare.cn/updater/|g' latest.json
