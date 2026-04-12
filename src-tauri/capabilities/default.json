@@ -21,9 +21,7 @@
     "updater:allow-check",
     "updater:allow-download-and-install",
     "process:allow-restart",
-    "core:app:allow-get-webview-window",
     "core:event:allow-listen",
-    "core:event:allow-emit",
-    "core:ipc:allow-invoke"
+    "core:event:allow-emit"
   ]
 }
