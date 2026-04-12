@@ -1,5 +1,29 @@
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, PhysicalPosition};
 use tauri::WindowEvent;
+use tauri_plugin_updater::UpdaterExt;
+
+#[tauri::command]
+async fn check_for_updates(app: tauri::AppHandle) -> Result<(), String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    
+    // 如果启用了 dialog: true (tauri.conf.json 中)，
+    // 这行 check() 被调用时，如果发现新版本，会自动弹窗询问用户是否更新。
+    // 用户同意后会自动下载、覆盖并重启。
+    match updater.check().await {
+        Ok(Some(update)) => {
+            println!("发现新版本: {}", update.version);
+            // 由于 dialog: true，Tauri 会自己接管后续的下载和重启，我们只需要调用 check 触发即可。
+        }
+        Ok(None) => {
+            println!("当前已是最新版本");
+        }
+        Err(e) => {
+            println!("检查更新失败: {}", e);
+            return Err(e.to_string());
+        }
+    }
+    Ok(())
+}
 
 #[tauri::command]
 fn trigger_summon(app: tauri::AppHandle, payload: String) {
@@ -63,8 +87,9 @@ fn test_summon(app: tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![trigger_summon, test_summon, hide_main_show_floating, restore_main, hide_summon])
+        .invoke_handler(tauri::generate_handler![trigger_summon, test_summon, hide_main_show_floating, restore_main, hide_summon, check_for_updates])
         .setup(|app| {
             let _main_window = WebviewWindowBuilder::new(
                 app,
@@ -101,7 +126,18 @@ pub fn run() {
                                 window.__TAURI_INTERNALS__.invoke('hide_main_show_floating');
                             }
                         }
+                        // 如果你页面上有更新按钮，也可以这样劫持触发：
+                        // if (target && target.closest && target.closest('#update-btn')) {
+                        //    window.__TAURI_INTERNALS__.invoke('check_for_updates');
+                        // }
                     }, true);
+
+                    // 启动时自动检查更新
+                    if (window.__TAURI_INTERNALS__) {
+                        setTimeout(() => {
+                            window.__TAURI_INTERNALS__.invoke('check_for_updates');
+                        }, 5000); // 延迟 5 秒检查，不阻碍主界面加载
+                    }
                 });
             "#)
             .build()

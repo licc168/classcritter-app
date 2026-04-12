@@ -50,8 +50,11 @@ jobs:
         run: pnpm install
 
       - uses: tauri-apps/tauri-action@v0
+        id: tauri_action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: app-v__VERSION__
           releaseName: "校园灵宠 v__VERSION__"
@@ -61,3 +64,19 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Upload to Aliyun OSS
+        uses: manyuanrong/setup-ossutil@v2.0
+        with:
+          endpoint: "oss-cn-beijing.aliyuncs.com"
+          access-key-id: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+      
+      - name: Sync Artifacts to OSS
+        run: |
+          # 使用阿里云官方的 ossutil 工具进行批量上传
+          # 这里上传生成的安装包和对应的签名文件
+          ossutil cp -r src-tauri/target/release/bundle/ oss://liccimages/updater/ --include "*.zip" --include "*.tar.gz" --include "*.msi" --include "*.dmg" --include "*.sig" --update -f
+          
+          # tauri-action 在打包完成后会生成 latest.json，我们把它也同步上去
+          find . -name "latest.json" -exec ossutil cp {} oss://liccimages/updater/latest.json -f \;
