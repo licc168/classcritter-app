@@ -14,7 +14,7 @@ jobs:
       matrix:
         include:
           - platform: "macos-latest" # for Apple Silicon and Intel
-            args: "--target universal-apple-darwin --bundles app"
+            args: "--target universal-apple-darwin"
           - platform: "ubuntu-22.04" # for Debian and AppImage
             args: ""
           - platform: "windows-latest" # for MSI and EXE
@@ -28,6 +28,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: "pnpm"
+          cache-dependency-path: "pnpm-lock.yaml"
 
       - name: install pnpm
         uses: pnpm/action-setup@v4
@@ -39,6 +41,11 @@ jobs:
         with:
           # Those targets are only used on macos runners so it's skipping on windows and ubuntu
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> src-tauri/target"
 
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
@@ -109,5 +116,4 @@ jobs:
           ossutil cp -r . oss://liccimages/updater/ --update -f
           if [ -f "latest.json" ]; then
             ossutil cp latest.json oss://liccimages/updater/latest.json -f
-            ossutil set-meta oss://liccimages/updater/latest.json Content-Type:application/json Cache-Control:no-cache -u
           fi
