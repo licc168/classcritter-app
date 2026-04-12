@@ -95,4 +95,8 @@ jobs:
         run: |
           cd release_assets
           # 将所有的附件和修改后的 latest.json 上传到 OSS
+          # 添加 header 指定 content-type，确保 latest.json 不被识别为 xml
           ossutil cp -r . oss://liccimages/updater/ --update -f
+          if [ -f "latest.json" ]; then
+            ossutil set-meta oss://liccimages/updater/latest.json Content-Type:application/json -u
+          fi
