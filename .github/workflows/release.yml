@@ -50,20 +50,39 @@ jobs:
         run: pnpm install
 
       - uses: tauri-apps/tauri-action@v0
-        id: tauri_action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: app-v__VERSION__
-          releaseName: "校园灵宠 v__VERSION__"
+          tagName: app-${{ github.ref_name }}
+          releaseName: "校园灵宠 ${{ github.ref_name }}"
           releaseBody: "校园灵宠桌面版自动构建版本。"
           # 用正确的参数名 assetNamePattern，硬编码 classcritter 前缀避免中文被剥离
           assetNamePattern: "classcritter-[version]-[platform]-[arch][ext]"
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  sync-oss:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p release_assets
+          cd release_assets
+          # 等待一下确保 release 已经完全 ready
+          sleep 10
+          # 下载该 tag 对应的所有 Release 附件
+          gh release download app-${{ github.ref_name }} --repo ${{ github.repository }}
+          
+          # 替换 latest.json 中的 github 下载链接为 OSS 的 CDN 链接
+          if [ -f "latest.json" ]; then
+            sed -i 's|https://github.com/[^/]*/[^/]*/releases/download/[^/]*/|https://image.albumshare.cn/updater/|g' latest.json
+          fi
 
       - name: Upload to Aliyun OSS
         uses: manyuanrong/setup-ossutil@v2.0
@@ -71,12 +90,9 @@ jobs:
           endpoint: "oss-cn-beijing.aliyuncs.com"
           access-key-id: ${{ secrets.OSS_ACCESS_KEY_ID }}
           access-key-secret: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
-      
-      - name: Sync Artifacts to OSS
+
+      - name: Sync to OSS
         run: |
-          # 使用阿里云官方的 ossutil 工具进行批量上传
-          # 这里上传生成的安装包和对应的签名文件
-          ossutil cp -r src-tauri/target/release/bundle/ oss://liccimages/updater/ --include "*.zip" --include "*.tar.gz" --include "*.msi" --include "*.dmg" --include "*.sig" --update -f
-          
-          # tauri-action 在打包完成后会生成 latest.json，我们把它也同步上去
-          find . -name "latest.json" -exec ossutil cp {} oss://liccimages/updater/latest.json -f \;
+          cd release_assets
+          # 将所有的附件和修改后的 latest.json 上传到 OSS
+          ossutil cp -r . oss://liccimages/updater/ --update -f
