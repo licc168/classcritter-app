@@ -14,7 +14,7 @@ jobs:
       matrix:
         include:
           - platform: "macos-latest" # for Apple Silicon and Intel
-            args: "--target universal-apple-darwin"
+            args: "--target universal-apple-darwin --bundles app"
           - platform: "ubuntu-22.04" # for Debian and AppImage
             args: ""
           - platform: "windows-latest" # for MSI and EXE
