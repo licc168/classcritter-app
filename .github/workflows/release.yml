@@ -94,9 +94,8 @@ jobs:
           VERSION_NUM=${VERSION#v}
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          # Tauri updater 真正使用的是带签名的 updater 包，而不是 .dmg / .exe 本体
           MAC_ASSET=$(find . -maxdepth 1 -type f \( -name "*darwin*.app.tar.gz" -o -name "*mac*.app.tar.gz" -o -name "*universal*.app.tar.gz" \) | sed 's|^\./||' | head -n 1)
-          WIN_ASSET=$(find . -maxdepth 1 -type f \( -name "*windows*.zip" -o -name "*win*.zip" -o -name "*.nsis.zip" -o -name "*.msi.zip" \) | sed 's|^\./||' | head -n 1)
+          WIN_ASSET=$(find . -maxdepth 1 -type f \( -name "*windows*.exe" -o -name "*win*.exe" -o -name "*windows*.nsis.zip" -o -name "*win*.nsis.zip" -o -name "*windows*.msi.zip" -o -name "*win*.msi.zip" -o -name "*windows*.zip" -o -name "*win*.zip" \) | sed 's|^\./||' | head -n 1)
 
           if [ -z "$MAC_ASSET" ] || [ ! -f "${MAC_ASSET}.sig" ]; then
             echo "Missing macOS updater asset or signature"
@@ -110,22 +109,17 @@ jobs:
             exit 1
           fi
 
-          SIG_MAC_UNIV=$(tr -d '\r\n' < "${MAC_ASSET}.sig")
-          SIG_WIN_X64=$(tr -d '\r\n' < "${WIN_ASSET}.sig")
-
-          if [ -z "$SIG_MAC_UNIV" ] || [ -z "$SIG_WIN_X64" ]; then
-            echo "Generated signature is empty"
-            exit 1
-          fi
-
-          VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" MAC_ASSET="$MAC_ASSET" WIN_ASSET="$WIN_ASSET" python3 -c '
+          VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" MAC_ASSET="$MAC_ASSET" WIN_ASSET="$WIN_ASSET" python3 -c '
           import json, os, pathlib
           version = os.environ["VERSION_NUM"]
           pub_date = os.environ["PUB_DATE"]
-          sig_mac = os.environ["SIG_MAC_UNIV"]
-          sig_win = os.environ["SIG_WIN_X64"]
           mac_asset = os.environ["MAC_ASSET"]
           win_asset = os.environ["WIN_ASSET"]
+          sig_mac = pathlib.Path(f"{mac_asset}.sig").read_text(encoding="utf-8").replace("\r", "")
+          sig_win = pathlib.Path(f"{win_asset}.sig").read_text(encoding="utf-8").replace("\r", "")
+
+          if not sig_mac.strip() or not sig_win.strip():
+            raise SystemExit("Generated signature is empty")
 
           payload = {
             "version": version,
