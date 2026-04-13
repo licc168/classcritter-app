@@ -93,14 +93,30 @@ jobs:
           VERSION="${{ github.ref_name }}"
           VERSION_NUM=${VERSION#v}
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          
-          # 动态查找真实的压缩包文件名（直接找 .tar.gz 和 .zip 包，兼容各种命名方式）
-          MAC_ASSET=$(ls *mac*.tar.gz *darwin*.tar.gz 2>/dev/null | grep -v "\.sig$" | head -n 1)
-          WIN_ASSET=$(ls *win*.zip 2>/dev/null | grep -v "\.sig$" | head -n 1)
-          
-          # 获取对应的签名内容（兼容正常后缀 .sig 以及被 tauri-action 截断的情况）
-          SIG_MAC_UNIV=$(cat "${MAC_ASSET}.sig" 2>/dev/null || cat $(ls *mac*.sig *darwin*.sig 2>/dev/null | grep -v "\.tar\.gz" | head -n 1) 2>/dev/null || echo "")
-          SIG_WIN_X64=$(cat "${WIN_ASSET}.sig" 2>/dev/null || cat $(ls *win*.sig 2>/dev/null | grep -v "\.zip" | head -n 1) 2>/dev/null || echo "")
+
+          # Tauri updater 真正使用的是带签名的 updater 包，而不是 .dmg / .exe 本体
+          MAC_ASSET=$(find . -maxdepth 1 -type f \( -name "*darwin*.app.tar.gz" -o -name "*mac*.app.tar.gz" -o -name "*universal*.app.tar.gz" \) | sed 's|^\./||' | head -n 1)
+          WIN_ASSET=$(find . -maxdepth 1 -type f \( -name "*windows*.zip" -o -name "*win*.zip" -o -name "*.nsis.zip" -o -name "*.msi.zip" \) | sed 's|^\./||' | head -n 1)
+
+          if [ -z "$MAC_ASSET" ] || [ ! -f "${MAC_ASSET}.sig" ]; then
+            echo "Missing macOS updater asset or signature"
+            ls -la
+            exit 1
+          fi
+
+          if [ -z "$WIN_ASSET" ] || [ ! -f "${WIN_ASSET}.sig" ]; then
+            echo "Missing Windows updater asset or signature"
+            ls -la
+            exit 1
+          fi
+
+          SIG_MAC_UNIV=$(tr -d '\r\n' < "${MAC_ASSET}.sig")
+          SIG_WIN_X64=$(tr -d '\r\n' < "${WIN_ASSET}.sig")
+
+          if [ -z "$SIG_MAC_UNIV" ] || [ -z "$SIG_WIN_X64" ]; then
+            echo "Generated signature is empty"
+            exit 1
+          fi
 
           VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" MAC_ASSET="$MAC_ASSET" WIN_ASSET="$WIN_ASSET" python3 -c '
           import json, os, pathlib
