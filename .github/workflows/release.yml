@@ -94,11 +94,35 @@ jobs:
           VERSION_NUM=${VERSION#v}
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
-          # 使用通配符查找对应的签名文件
-          SIG_MAC_UNIV=$(cat *macos-universal.app.tar.gz.sig 2>/dev/null || echo "")
-          SIG_WIN_X64=$(cat *windows-x86_64-setup.nsis.zip.sig 2>/dev/null || echo "")
+          # 动态查找真实的压缩包文件名（避免 tauri-action 的平台命名与硬编码不一致）
+          MAC_ASSET=$(ls *.app.tar.gz 2>/dev/null | head -n 1)
+          WIN_ASSET=$(ls *.nsis.zip 2>/dev/null | head -n 1)
+          
+          # 获取对应的签名内容
+          SIG_MAC_UNIV=$(cat "${MAC_ASSET}.sig" 2>/dev/null || echo "")
+          SIG_WIN_X64=$(cat "${WIN_ASSET}.sig" 2>/dev/null || echo "")
 
-          VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" python3 -c 'import json, os, pathlib; version = os.environ["VERSION_NUM"]; pub_date = os.environ["PUB_DATE"]; sig_mac = os.environ["SIG_MAC_UNIV"]; sig_win = os.environ["SIG_WIN_X64"]; payload = {"version": version, "notes": f"更新了版本 {version}", "pub_date": pub_date, "platforms": {"darwin-aarch64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"}, "darwin-x86_64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"}, "windows-x86_64": {"signature": sig_win, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-windows-x86_64-setup.nsis.zip"}}}; pathlib.Path("latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")'
+          VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" MAC_ASSET="$MAC_ASSET" WIN_ASSET="$WIN_ASSET" python3 -c '
+          import json, os, pathlib
+          version = os.environ["VERSION_NUM"]
+          pub_date = os.environ["PUB_DATE"]
+          sig_mac = os.environ["SIG_MAC_UNIV"]
+          sig_win = os.environ["SIG_WIN_X64"]
+          mac_asset = os.environ["MAC_ASSET"]
+          win_asset = os.environ["WIN_ASSET"]
+
+          payload = {
+            "version": version,
+            "notes": f"更新了版本 {version}",
+            "pub_date": pub_date,
+            "platforms": {
+              "darwin-aarch64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/{mac_asset}"},
+              "darwin-x86_64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/{mac_asset}"},
+              "windows-x86_64": {"signature": sig_win, "url": f"https://image.albumshare.cn/updater/{win_asset}"}
+            }
+          }
+          pathlib.Path("latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          '
 
       - name: Upload to Aliyun OSS
         uses: manyuanrong/setup-ossutil@v2.0
