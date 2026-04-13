@@ -86,23 +86,19 @@ jobs:
           # 下载该 tag 对应的所有 Release 附件
           gh release download app-${{ github.ref_name }} --repo ${{ github.repository }} --pattern "*"
           
-          # 手动生成一个 latest.json 如果 github release 里没有
-          # 因为 tauri-action 可能默认没有上传 latest.json 到 release asset 中
-          if [ ! -f "latest.json" ]; then
-            echo "Generating latest.json manually..."
-            VERSION="${{ github.ref_name }}"
-            VERSION_NUM=${VERSION#v}
-            PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            
-            # 使用通配符查找对应的签名文件
-            SIG_MAC_UNIV=$(cat *macos-universal.app.tar.gz.sig 2>/dev/null || echo "")
-            SIG_WIN_X64=$(cat *windows-x86_64-setup.nsis.zip.sig 2>/dev/null || echo "")
+          # 无论 GitHub Release 里有没有 latest.json，都强制手动生成一份正确的
+          # 因为 tauri-action 生成的 latest.json 里包含中文字符和默认的文件名格式
+          # 而我们在上面用 assetNamePattern 重命名了文件，导致两边 URL 对不上报 404
+          echo "Generating correct latest.json manually to match renamed assets..."
+          VERSION="${{ github.ref_name }}"
+          VERSION_NUM=${VERSION#v}
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # 使用通配符查找对应的签名文件
+          SIG_MAC_UNIV=$(cat *macos-universal.app.tar.gz.sig 2>/dev/null || echo "")
+          SIG_WIN_X64=$(cat *windows-x86_64-setup.nsis.zip.sig 2>/dev/null || echo "")
 
-            VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" python3 -c 'import json, os, pathlib; version = os.environ["VERSION_NUM"]; pub_date = os.environ["PUB_DATE"]; sig_mac = os.environ["SIG_MAC_UNIV"]; sig_win = os.environ["SIG_WIN_X64"]; payload = {"version": version, "notes": f"更新了版本 {version}", "pub_date": pub_date, "platforms": {"darwin-aarch64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"}, "darwin-x86_64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"}, "windows-x86_64": {"signature": sig_win, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-windows-x86_64-setup.nsis.zip"}}}; pathlib.Path("latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")'
-          else
-            # 替换 latest.json 中的 github 下载链接为 OSS 的 CDN 链接
-            sed -i 's|https://github.com/[^/]*/[^/]*/releases/download/[^/]*/|https://image.albumshare.cn/updater/|g' latest.json
-          fi
+          VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" python3 -c 'import json, os, pathlib; version = os.environ["VERSION_NUM"]; pub_date = os.environ["PUB_DATE"]; sig_mac = os.environ["SIG_MAC_UNIV"]; sig_win = os.environ["SIG_WIN_X64"]; payload = {"version": version, "notes": f"更新了版本 {version}", "pub_date": pub_date, "platforms": {"darwin-aarch64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"}, "darwin-x86_64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"}, "windows-x86_64": {"signature": sig_win, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-windows-x86_64-setup.nsis.zip"}}}; pathlib.Path("latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")'
 
       - name: Upload to Aliyun OSS
         uses: manyuanrong/setup-ossutil@v2.0
@@ -114,8 +110,6 @@ jobs:
       - name: Sync to OSS
         run: |
           cd release_assets
-          # 将所有的附件和修改后的 latest.json 上传到 OSS
+          # 将所有的附件和重新生成的 latest.json 上传到 OSS
           ossutil cp -r . oss://liccimages/updater/ --update -f
-          if [ -f "latest.json" ]; then
-            ossutil cp latest.json oss://liccimages/updater/latest.json -f
-          fi
+          ossutil cp latest.json oss://liccimages/updater/latest.json -f
