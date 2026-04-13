@@ -1,18 +1,53 @@
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, PhysicalPosition};
 use tauri::WindowEvent;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_updater::UpdaterExt;
 
 #[tauri::command]
 async fn check_for_updates(app: tauri::AppHandle) -> Result<(), String> {
     let updater = app.updater().map_err(|e| e.to_string())?;
     
-    // 如果启用了 dialog: true (tauri.conf.json 中)，
-    // 这行 check() 被调用时，如果发现新版本，会自动弹窗询问用户是否更新。
-    // 用户同意后会自动下载、覆盖并重启。
     match updater.check().await {
         Ok(Some(update)) => {
             println!("发现新版本: {}", update.version);
-            // 由于 dialog: true，Tauri 会自己接管后续的下载和重启，我们只需要调用 check 触发即可。
+            
+            let message = format!("发现新版本 {}，是否立即更新？\n\n更新说明:\n{}", update.version, update.body.clone().unwrap_or_default());
+            
+            // 使用 dialog 插件询问用户
+            let app_clone = app.clone();
+            app.dialog()
+                .message(message)
+                .title("发现新版本")
+                .buttons(MessageDialogButtons::OkCancelCustom("更新".to_string(), "稍后".to_string()))
+                .show(move |result| {
+                    if result {
+                        tauri::async_runtime::spawn(async move {
+                            println!("用户同意更新，开始下载...");
+                            let mut downloaded = 0;
+                            if let Err(e) = update.download_and_install(
+                                |chunk_length, content_length| {
+                                    downloaded += chunk_length;
+                                    println!("下载进度: {}/{}", downloaded, content_length.unwrap_or(0));
+                                },
+                                || {
+                                    println!("下载完成");
+                                },
+                            ).await {
+                                println!("更新失败: {}", e);
+                                let _ = app_clone.dialog()
+                                    .message(format!("更新失败: {}", e))
+                                    .title("更新失败")
+                                    .kind(tauri_plugin_dialog::MessageDialogKind::Error)
+                                    .show(|_| {});
+                            } else {
+                                println!("更新成功，准备重启...");
+                                app_clone.restart();
+                            }
+                        });
+                    } else {
+                        println!("用户取消了更新");
+                    }
+                });
         }
         Ok(None) => {
             println!("当前已是最新版本");
@@ -87,6 +122,8 @@ fn test_summon(app: tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![trigger_summon, test_summon, hide_main_show_floating, restore_main, hide_summon, check_for_updates])
