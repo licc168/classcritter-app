@@ -94,13 +94,13 @@ jobs:
           VERSION_NUM=${VERSION#v}
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
-          # 动态查找真实的压缩包文件名（通过已下载的 .sig 文件反推包名）
-          MAC_ASSET=$(ls *macos*.tar.gz.sig 2>/dev/null | head -n 1 | sed 's/\.sig$//')
-          WIN_ASSET=$(ls *windows*.zip.sig 2>/dev/null | head -n 1 | sed 's/\.sig$//')
+          # 动态查找真实的压缩包文件名（直接找 .tar.gz 和 .zip 包，兼容各种命名方式）
+          MAC_ASSET=$(ls *mac*.tar.gz *darwin*.tar.gz 2>/dev/null | grep -v "\.sig$" | head -n 1)
+          WIN_ASSET=$(ls *win*.zip 2>/dev/null | grep -v "\.sig$" | head -n 1)
           
-          # 获取对应的签名内容
-          SIG_MAC_UNIV=$(cat "$MAC_ASSET.sig" 2>/dev/null || echo "")
-          SIG_WIN_X64=$(cat "$WIN_ASSET.sig" 2>/dev/null || echo "")
+          # 获取对应的签名内容（兼容正常后缀 .sig 以及被 tauri-action 截断的情况）
+          SIG_MAC_UNIV=$(cat "${MAC_ASSET}.sig" 2>/dev/null || cat $(ls *mac*.sig *darwin*.sig 2>/dev/null | grep -v "\.tar\.gz" | head -n 1) 2>/dev/null || echo "")
+          SIG_WIN_X64=$(cat "${WIN_ASSET}.sig" 2>/dev/null || cat $(ls *win*.sig 2>/dev/null | grep -v "\.zip" | head -n 1) 2>/dev/null || echo "")
 
           VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" MAC_ASSET="$MAC_ASSET" WIN_ASSET="$WIN_ASSET" python3 -c '
           import json, os, pathlib
