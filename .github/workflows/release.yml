@@ -98,33 +98,7 @@ jobs:
             SIG_MAC_UNIV=$(cat *macos-universal.app.tar.gz.sig 2>/dev/null || echo "")
             SIG_WIN_X64=$(cat *windows-x86_64-setup.nsis.zip.sig 2>/dev/null || echo "")
 
-            VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" python3 -c '
-import json, os, pathlib
-version = os.environ["VERSION_NUM"]
-pub_date = os.environ["PUB_DATE"]
-sig_mac = os.environ["SIG_MAC_UNIV"]
-sig_win = os.environ["SIG_WIN_X64"]
-
-payload = {
-    "version": version,
-    "notes": f"更新了版本 {version}",
-    "pub_date": pub_date,
-    "platforms": {
-        "darwin-aarch64": {
-            "signature": sig_mac,
-            "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"
-        },
-        "darwin-x86_64": {
-            "signature": sig_mac,
-            "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"
-        },
-        "windows-x86_64": {
-            "signature": sig_win,
-            "url": f"https://image.albumshare.cn/updater/classcritter-{version}-windows-x86_64-setup.nsis.zip"
-        }
-    }
-}
-pathlib.Path("latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")'
+            VERSION_NUM="$VERSION_NUM" PUB_DATE="$PUB_DATE" SIG_MAC_UNIV="$SIG_MAC_UNIV" SIG_WIN_X64="$SIG_WIN_X64" python3 -c 'import json, os, pathlib; version = os.environ["VERSION_NUM"]; pub_date = os.environ["PUB_DATE"]; sig_mac = os.environ["SIG_MAC_UNIV"]; sig_win = os.environ["SIG_WIN_X64"]; payload = {"version": version, "notes": f"更新了版本 {version}", "pub_date": pub_date, "platforms": {"darwin-aarch64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"}, "darwin-x86_64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-macos-universal.app.tar.gz"}, "windows-x86_64": {"signature": sig_win, "url": f"https://image.albumshare.cn/updater/classcritter-{version}-windows-x86_64-setup.nsis.zip"}}}; pathlib.Path("latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")'
           else
             # 替换 latest.json 中的 github 下载链接为 OSS 的 CDN 链接
             sed -i 's|https://github.com/[^/]*/[^/]*/releases/download/[^/]*/|https://image.albumshare.cn/updater/|g' latest.json
