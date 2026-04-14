@@ -1,6 +1,6 @@
 [package]
 name = "classcritter-app"
-version = "1.0.32"
+version = "1.0.33"
 description = "校园灵宠桌面版"
 authors = ["you"]
 edition = "2021"

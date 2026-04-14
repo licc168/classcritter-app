@@ -17,7 +17,7 @@ jobs:
         id: create-release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: app-${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
           name: "校园灵宠 ${{ github.ref_name }}"
           body: "校园灵宠桌面版自动构建版本。"
           draft: false
@@ -83,7 +83,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          tagName: app-${{ github.ref_name }}
+          tagName: ${{ github.ref_name }}
           releaseName: "校园灵宠 ${{ github.ref_name }}"
           releaseBody: "校园灵宠桌面版自动构建版本。"
           # 用正确的参数名 assetNamePattern，硬编码 classcritter 前缀避免中文被剥离
@@ -105,7 +105,7 @@ jobs:
           # 等待一下确保 release 已经完全 ready
           sleep 10
           # 下载该 tag 对应的所有 Release 附件
-          gh release download app-${{ github.ref_name }} --repo ${{ github.repository }} --pattern "*"
+          gh release download ${{ github.ref_name }} --repo ${{ github.repository }} --pattern "*"
           
           # 无论 GitHub Release 里有没有 latest.json，都强制手动生成一份正确的
           # 因为 tauri-action 生成的 latest.json 里包含中文字符和默认的文件名格式
@@ -147,9 +147,9 @@ jobs:
             "notes": f"更新了版本 {version}",
             "pub_date": pub_date,
             "platforms": {
-              "darwin-aarch64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/{mac_asset}"},
-              "darwin-x86_64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/updater/{mac_asset}"},
-              "windows-x86_64": {"signature": sig_win, "url": f"https://image.albumshare.cn/updater/{win_asset}"}
+              "darwin-aarch64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/classcritter/app/{mac_asset}"},
+              "darwin-x86_64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/classcritter/app/{mac_asset}"},
+              "windows-x86_64": {"signature": sig_win, "url": f"https://image.albumshare.cn/classcritter/app/{win_asset}"}
             }
           }
           pathlib.Path("latest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -166,5 +166,5 @@ jobs:
         run: |
           cd release_assets
           # 将所有的附件和重新生成的 latest.json 上传到 OSS
-          ossutil cp -r . oss://liccimages/updater/ --update -f
-          ossutil cp latest.json oss://liccimages/updater/latest.json -f
+          ossutil cp -r . oss://liccimages/classcritter/app/ --update -f
+          ossutil cp latest.json oss://liccimages/classcritter/app/latest.json -f
