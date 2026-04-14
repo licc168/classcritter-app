@@ -23,6 +23,23 @@ async fn check_for_updates(app: tauri::AppHandle) -> Result<(), String> {
                     if result {
                         tauri::async_runtime::spawn(async move {
                             println!("用户同意更新，开始下载...");
+
+                            #[cfg(target_os = "macos")]
+                            {
+                                if let Ok(exe_path) = std::env::current_exe() {
+                                    let path_str = exe_path.to_string_lossy();
+                                    if path_str.contains("AppTranslocation") || path_str.starts_with("/Volumes/") {
+                                        println!("检测到在 DMG 或隔离区运行，拦截更新");
+                                        let _ = app_clone.dialog()
+                                            .message("检测到应用正在隔离区或安装包中运行，无法直接进行自动更新。\n\n请先将应用拖入「应用程序 (Applications)」文件夹后再试。")
+                                            .title("更新受限")
+                                            .kind(tauri_plugin_dialog::MessageDialogKind::Warning)
+                                            .show(|_| {});
+                                        return;
+                                    }
+                                }
+                            }
+
                             let mut downloaded = 0;
                             if let Err(e) = update.download_and_install(
                                 |chunk_length, content_length| {
@@ -128,6 +145,26 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![trigger_summon, test_summon, hide_main_show_floating, restore_main, hide_summon, check_for_updates])
         .setup(|app| {
+            // 在应用启动时立刻检测 macOS 隔离区
+            #[cfg(target_os = "macos")]
+            {
+                if let Ok(exe_path) = std::env::current_exe() {
+                    let path_str = exe_path.to_string_lossy();
+                    if path_str.contains("AppTranslocation") || path_str.starts_with("/Volumes/") {
+                        let _ = app.handle().dialog()
+                            .message("检测到应用正在「下载」文件夹或安装包中直接运行。\n\n为了保证自动更新和数据存储的正常使用，请将应用拖入「应用程序 (Applications)」文件夹后再运行。")
+                            .title("建议移动到应用程序")
+                            .kind(tauri_plugin_dialog::MessageDialogKind::Warning)
+                            .show(|_| {
+                                std::process::Command::new("open")
+                                    .arg("/Applications")
+                                    .spawn()
+                                    .ok();
+                            });
+                    }
+                }
+            }
+
             let _main_window = WebviewWindowBuilder::new(
                 app,
                 "main",

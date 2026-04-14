@@ -6,7 +6,27 @@ on:
       - 'v*'
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.create-release.outputs.id }}
+    steps:
+      - name: Create Release
+        id: create-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-${{ github.ref_name }}
+          name: "校园灵宠 ${{ github.ref_name }}"
+          body: "校园灵宠桌面版自动构建版本。"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish:
+    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -62,6 +82,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           tagName: app-${{ github.ref_name }}
           releaseName: "校园灵宠 ${{ github.ref_name }}"
           releaseBody: "校园灵宠桌面版自动构建版本。"
