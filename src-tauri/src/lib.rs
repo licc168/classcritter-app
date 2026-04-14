@@ -64,10 +64,10 @@ fn report_active(app: tauri::AppHandle) {
 
         // 区分开发环境和生产环境的 API 地址
         #[cfg(debug_assertions)]
-        let api_url = "http://127.0.0.1:8089/api/public/install/report";
+        let api_url = "http://127.0.0.1:8098/api/public/install/report";
         
         #[cfg(not(debug_assertions))]
-        let api_url = "https://api.classcritter.com/api/public/install/report";
+        let api_url = "https://api.epet.school/api/public/install/report";
 
         let client = reqwest::Client::new();
         
