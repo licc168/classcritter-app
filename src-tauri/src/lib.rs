@@ -1,18 +1,115 @@
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, PhysicalPosition};
+use serde::Serialize;
+use std::fs;
+use std::path::PathBuf;
 use tauri::WindowEvent;
+use tauri::{Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_updater::UpdaterExt;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ClientInstallReportDto {
+    machine_id: String,
+    os_type: String,
+    os_version: String,
+    arch: String,
+    app_version: String,
+    user_id: Option<i32>,
+}
+
+fn get_machine_id(app: &tauri::AppHandle) -> String {
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
+    if !app_dir.exists() {
+        let _ = fs::create_dir_all(&app_dir);
+    }
+    let id_file = app_dir.join("machine_id.txt");
+    if id_file.exists() {
+        if let Ok(id) = fs::read_to_string(&id_file) {
+            let id = id.trim().to_string();
+            if !id.is_empty() {
+                return id;
+            }
+        }
+    }
+    let new_id = uuid::Uuid::new_v4().to_string();
+    let _ = fs::write(id_file, &new_id);
+    new_id
+}
+
+#[tauri::command]
+fn get_machine_id_cmd(app: tauri::AppHandle) -> String {
+    get_machine_id(&app)
+}
+
+fn report_active(app: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let machine_id = get_machine_id(&app);
+        let os_info = os_info::get();
+        let os_type = std::env::consts::OS.to_string();
+        let os_version = os_info.version().to_string();
+        let arch = std::env::consts::ARCH.to_string();
+        let app_version = app.package_info().version.to_string();
+
+        let payload = ClientInstallReportDto {
+            machine_id,
+            os_type,
+            os_version,
+            arch,
+            app_version,
+            user_id: None,
+        };
+
+        // 区分开发环境和生产环境的 API 地址
+        #[cfg(debug_assertions)]
+        let api_url = "http://127.0.0.1:8089/api/public/install/report";
+        
+        #[cfg(not(debug_assertions))]
+        let api_url = "https://api.classcritter.com/api/public/install/report";
+
+        let client = reqwest::Client::new();
+        
+        // 循环心跳上报 (启动时上报一次，然后每 4 小时上报一次)
+        loop {
+            println!("开始上报装机状态到: {}", api_url);
+            match client.post(api_url)
+                .json(&payload)
+                .send()
+                .await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        println!("装机状态上报成功!");
+                    } else {
+                        println!("装机状态上报失败，HTTP状态码: {}", response.status());
+                    }
+                },
+                Err(e) => {
+                    println!("装机状态上报请求异常: {}", e);
+                }
+            }
+            
+            // 每 4 小时 (14400秒) 心跳一次
+            tokio::time::sleep(std::time::Duration::from_secs(14400)).await;
+        }
+    });
+}
 
 #[tauri::command]
 async fn check_for_updates(app: tauri::AppHandle) -> Result<(), String> {
     let updater = app.updater().map_err(|e| e.to_string())?;
-    
+
     match updater.check().await {
         Ok(Some(update)) => {
             println!("发现新版本: {}", update.version);
-            
-            let message = format!("发现新版本 {}，是否立即更新？\n\n更新说明:\n{}", update.version, update.body.clone().unwrap_or_default());
-            
+
+            let message = format!(
+                "发现新版本 {}，是否立即更新？\n\n更新说明:\n{}",
+                update.version,
+                update.body.clone().unwrap_or_default()
+            );
+
             // 使用 dialog 插件询问用户
             let app_clone = app.clone();
             app.dialog()
@@ -80,7 +177,9 @@ async fn check_for_updates(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn trigger_summon(app: tauri::AppHandle, payload: String) {
     if let Some(summon_win) = app.get_webview_window("summon") {
-        summon_win.eval(&format!("window.dispatchSummonEvent('{}')", payload)).ok();
+        summon_win
+            .eval(&format!("window.dispatchSummonEvent('{}')", payload))
+            .ok();
         summon_win.show().unwrap();
         summon_win.set_always_on_top(true).unwrap();
         summon_win.set_focus().unwrap();
@@ -99,7 +198,9 @@ fn hide_main_show_floating(app: tauri::AppHandle) {
             // 100x100 window size, padding 100px from top and right (不需要太靠边)
             let x = size.width.saturating_sub(200);
             let y = 100;
-            floating_win.set_position(PhysicalPosition::new(x, y)).unwrap();
+            floating_win
+                .set_position(PhysicalPosition::new(x, y))
+                .unwrap();
         }
         floating_win.show().unwrap();
         floating_win.set_always_on_top(true).unwrap();
@@ -127,9 +228,12 @@ fn hide_summon(app: tauri::AppHandle) {
 
 #[tauri::command]
 fn test_summon(app: tauri::AppHandle) {
-    let mock_payload = r#"[{\"studentName\":\"测试学生张三\",\"message\":\"请立即到办公室一趟！\"}]"#;
+    let mock_payload =
+        r#"[{\"studentName\":\"测试学生张三\",\"message\":\"请立即到办公室一趟！\"}]"#;
     if let Some(summon_win) = app.get_webview_window("summon") {
-        summon_win.eval(&format!("window.dispatchSummonEvent('{}')", mock_payload)).ok();
+        summon_win
+            .eval(&format!("window.dispatchSummonEvent('{}')", mock_payload))
+            .ok();
         summon_win.show().unwrap();
         summon_win.set_always_on_top(true).unwrap();
         summon_win.set_focus().unwrap();
@@ -143,8 +247,11 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![trigger_summon, test_summon, hide_main_show_floating, restore_main, hide_summon, check_for_updates])
+        .invoke_handler(tauri::generate_handler![trigger_summon, test_summon, hide_main_show_floating, restore_main, hide_summon, check_for_updates, get_machine_id_cmd])
         .setup(|app| {
+            // 上报装机活跃状态
+            report_active(app.handle().clone());
+
             // 在应用启动时立刻检测 macOS 隔离区
             #[cfg(target_os = "macos")]
             {
