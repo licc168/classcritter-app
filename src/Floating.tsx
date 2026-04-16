@@ -26,6 +26,9 @@ export default function Floating() {
   };
 
   const handlePointerDown = async (event: PointerEvent<HTMLDivElement>) => {
+    // 忽略右键点击（防止右键触发拖拽记录）
+    if (event.button !== 0) return;
+
     pointerStartRef.current = { x: event.screenX, y: event.screenY };
     hasDraggedRef.current = false;
     
@@ -77,7 +80,8 @@ export default function Floating() {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
 
-    if (!hasDraggedRef.current) {
+    // 只有在未发生拖拽，并且是鼠标左键/触控（button === 0）时，才恢复主窗口
+    if (!hasDraggedRef.current && event.button === 0) {
       await handleRestore();
     }
 
