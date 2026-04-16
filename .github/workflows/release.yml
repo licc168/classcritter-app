@@ -13,13 +13,26 @@ jobs:
     outputs:
       release_id: ${{ steps.create-release.outputs.id }}
     steps:
+      - uses: actions/checkout@v4
+      - name: Read Release Notes
+        id: notes
+        run: |
+          if [ -f "RELEASE_NOTES.md" ]; then
+            EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+            echo "NOTES<<$EOF" >> $GITHUB_ENV
+            cat RELEASE_NOTES.md >> $GITHUB_ENV
+            echo "$EOF" >> $GITHUB_ENV
+          else
+            echo "NOTES=校园灵宠桌面版自动构建版本。" >> $GITHUB_ENV
+          fi
+
       - name: Create Release
         id: create-release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: "校园灵宠 ${{ github.ref_name }}"
-          body: "校园灵宠桌面版自动构建版本。"
+          body: ${{ env.NOTES }}
           draft: false
           prerelease: false
         env:
@@ -85,7 +98,6 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           tagName: ${{ github.ref_name }}
           releaseName: "校园灵宠 ${{ github.ref_name }}"
-          releaseBody: "校园灵宠桌面版自动构建版本。"
           # 用正确的参数名 assetNamePattern，硬编码 classcritter 前缀避免中文被剥离
           assetNamePattern: "classcritter-[version]-[platform]-[arch][ext]"
           releaseDraft: false
@@ -96,6 +108,7 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Download Release Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,13 +151,20 @@ jobs:
           win_asset = os.environ["WIN_ASSET"]
           sig_mac = pathlib.Path(f"{mac_asset}.sig").read_text(encoding="utf-8").replace("\r", "")
           sig_win = pathlib.Path(f"{win_asset}.sig").read_text(encoding="utf-8").replace("\r", "")
+          
+          # 读取根目录的 RELEASE_NOTES.md
+          notes_path = pathlib.Path("../RELEASE_NOTES.md")
+          if notes_path.exists():
+              notes = notes_path.read_text(encoding="utf-8").strip()
+          else:
+              notes = f"更新了版本 {version}"
 
           if not sig_mac.strip() or not sig_win.strip():
             raise SystemExit("Generated signature is empty")
 
           payload = {
             "version": version,
-            "notes": f"更新了版本 {version}",
+            "notes": notes,
             "pub_date": pub_date,
             "platforms": {
               "darwin-aarch64": {"signature": sig_mac, "url": f"https://image.albumshare.cn/classcritter/app/{mac_asset}"},
