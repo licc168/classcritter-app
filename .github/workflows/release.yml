@@ -14,16 +14,11 @@ jobs:
       release_id: ${{ steps.create-release.outputs.id }}
     steps:
       - uses: actions/checkout@v4
-      - name: Read Release Notes
-        id: notes
+
+      - name: Ensure Release Notes
         run: |
-          if [ -f "RELEASE_NOTES.md" ]; then
-            EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-            echo "NOTES<<$EOF" >> $GITHUB_ENV
-            cat RELEASE_NOTES.md >> $GITHUB_ENV
-            echo "$EOF" >> $GITHUB_ENV
-          else
-            echo "NOTES=校园灵宠桌面版自动构建版本。" >> $GITHUB_ENV
+          if [ ! -f "RELEASE_NOTES.md" ]; then
+            echo "校园灵宠桌面版自动构建版本。" > RELEASE_NOTES.md
           fi
 
       - name: Create Release
@@ -32,7 +27,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: "校园灵宠 ${{ github.ref_name }}"
-          body: ${{ env.NOTES }}
+          body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
         env:
