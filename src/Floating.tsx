@@ -89,9 +89,9 @@ export default function Floating() {
   const handleRightClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     try {
-      await invoke("test_summon");
+      await invoke("show_floating_menu");
     } catch (error) {
-      console.error('Failed to trigger test summon:', error);
+      console.error("Failed to show context menu:", error);
     }
   };
 

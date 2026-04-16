@@ -3,6 +3,10 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::WindowEvent;
 use tauri::{Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_updater::UpdaterExt;
 
@@ -229,7 +233,7 @@ fn hide_summon(app: tauri::AppHandle) {
 #[tauri::command]
 fn test_summon(app: tauri::AppHandle) {
     let mock_payload =
-        r#"[{\"studentName\":\"测试学生张三\",\"message\":\"请立即到办公室一趟！\"}]"#;
+        r#"[{\"studentName\":\"学生张三\",\"message\":\"请立即到办公室一趟！\"}]"#;
     if let Some(summon_win) = app.get_webview_window("summon") {
         summon_win
             .eval(&format!("window.dispatchSummonEvent('{}')", mock_payload))
@@ -240,6 +244,17 @@ fn test_summon(app: tauri::AppHandle) {
     }
 }
 
+#[tauri::command]
+fn show_floating_menu(app: tauri::AppHandle, window: tauri::Window) {
+    if let Ok(show_i) = MenuItem::with_id(&app, "show", "显示主界面", true, None::<&str>) {
+        if let Ok(quit_i) = MenuItem::with_id(&app, "quit", "完全退出", true, None::<&str>) {
+            if let Ok(menu) = Menu::with_items(&app, &[&show_i, &quit_i]) {
+                let _ = window.popup_menu(&menu);
+            }
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -247,8 +262,55 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![trigger_summon, test_summon, hide_main_show_floating, restore_main, hide_summon, check_for_updates, get_machine_id_cmd])
+        .invoke_handler(tauri::generate_handler![trigger_summon, hide_main_show_floating, restore_main, hide_summon, check_for_updates, get_machine_id_cmd, show_floating_menu])
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "quit" => {
+                app.exit(0);
+            }
+            "show" => {
+                if let Some(main_win) = app.get_webview_window("main") {
+                    let _ = main_win.show();
+                    let _ = main_win.unminimize();
+                    let _ = main_win.set_focus();
+                }
+                if let Some(floating_win) = app.get_webview_window("floating") {
+                    let _ = floating_win.hide();
+                }
+            }
+            _ => {}
+        })
         .setup(|app| {
+            // 初始化系统托盘
+            if let Ok(show_i) = MenuItem::with_id(app, "show", "显示主界面", true, None::<&str>) {
+                if let Ok(quit_i) = MenuItem::with_id(app, "quit", "完全退出", true, None::<&str>) {
+                    if let Ok(tray_menu) = Menu::with_items(app, &[&show_i, &quit_i]) {
+                        let _tray = TrayIconBuilder::new()
+                            .icon(app.default_window_icon().unwrap().clone())
+                            .menu(&tray_menu)
+                            .tooltip("校园灵宠")
+                            .on_tray_icon_event(|tray, event| {
+                                if let TrayIconEvent::Click {
+                                    button: MouseButton::Left,
+                                    button_state: MouseButtonState::Up,
+                                    ..
+                                } = event
+                                {
+                                    let app = tray.app_handle();
+                                    if let Some(main_win) = app.get_webview_window("main") {
+                                        let _ = main_win.show();
+                                        let _ = main_win.unminimize();
+                                        let _ = main_win.set_focus();
+                                    }
+                                    if let Some(floating_win) = app.get_webview_window("floating") {
+                                        let _ = floating_win.hide();
+                                    }
+                                }
+                            })
+                            .build(app);
+                    }
+                }
+            }
+
             // 上报装机活跃状态
             report_active(app.handle().clone());
 
@@ -367,6 +429,9 @@ pub fn run() {
                 if let WindowEvent::Resized(_) = event {
                     let is_minimized = window.is_minimized().unwrap_or(false);
                     if is_minimized {
+                        // 当用户点击原生最小化按钮时，隐藏主窗口（使其从任务栏/Dock消失）
+                        window.hide().unwrap();
+
                         if let Some(floating) = window.app_handle().get_webview_window("floating") {
                             if let Ok(Some(monitor)) = floating.current_monitor() {
                                 let size = monitor.size();
