@@ -1,10 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalPosition } from "@tauri-apps/api/window";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 
 export default function Floating() {
   const [isHovered, setIsHovered] = useState(false);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const windowStartRef = useRef<{ x: number; y: number } | null>(null);
   const hasDraggedRef = useRef(false);
 
   useEffect(() => {
@@ -24,18 +25,30 @@ export default function Floating() {
     }
   };
 
-  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+  const handlePointerDown = async (event: PointerEvent<HTMLDivElement>) => {
+    pointerStartRef.current = { x: event.screenX, y: event.screenY };
     hasDraggedRef.current = false;
+    
+    // 获取窗口当前位置，用于触摸屏手动计算拖拽
+    try {
+      const pos = await getCurrentWindow().outerPosition();
+      windowStartRef.current = { x: pos.x, y: pos.y };
+    } catch (error) {
+      console.error("Failed to get window position:", error);
+    }
+
+    if (event.pointerType === 'touch') {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
   };
 
   const handlePointerMove = async (event: PointerEvent<HTMLDivElement>) => {
-    if (!pointerStartRef.current || hasDraggedRef.current) {
+    if (!pointerStartRef.current || !windowStartRef.current) {
       return;
     }
 
-    const deltaX = event.clientX - pointerStartRef.current.x;
-    const deltaY = event.clientY - pointerStartRef.current.y;
+    const deltaX = event.screenX - pointerStartRef.current.x;
+    const deltaY = event.screenY - pointerStartRef.current.y;
     const distance = Math.hypot(deltaX, deltaY);
 
     if (distance < 4) {
@@ -45,18 +58,31 @@ export default function Floating() {
     hasDraggedRef.current = true;
 
     try {
-      await getCurrentWindow().startDragging();
+      if (event.pointerType === 'mouse') {
+        // 鼠标模式：使用 Tauri 原生拖拽 API
+        await getCurrentWindow().startDragging();
+      } else if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+        // 触摸/触控笔模式：由于原生 startDragging 在 Windows 触摸屏会失效，改用手动计算并设置窗口位置
+        const newX = windowStartRef.current.x + deltaX;
+        const newY = windowStartRef.current.y + deltaY;
+        await getCurrentWindow().setPosition(new LogicalPosition(newX, newY));
+      }
     } catch (error) {
       console.error("Failed to drag floating window:", error);
     }
   };
 
-  const handlePointerUp = async () => {
+  const handlePointerUp = async (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
     if (!hasDraggedRef.current) {
       await handleRestore();
     }
 
     pointerStartRef.current = null;
+    windowStartRef.current = null;
     hasDraggedRef.current = false;
   };
 

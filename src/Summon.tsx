@@ -1,9 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow, LogicalPosition } from "@tauri-apps/api/window";
 
 export default function Summon() {
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const windowStartRef = useRef<{ x: number; y: number } | null>(null);
+  const hasDraggedRef = useRef(false);
+
   const [names, setNames] = useState("学生");
   const [message, setMessage] = useState("请立即到办公室一趟");
+
+  useEffect(() => {
+    // Disable context menu
+    const handleContextMenu = (e: Event) => {
+      e.preventDefault();
+    };
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => document.removeEventListener('contextmenu', handleContextMenu);
+  }, []);
 
   useEffect(() => {
     const handleSummonEvent = (e: any) => {
@@ -44,6 +58,62 @@ export default function Summon() {
     }
   };
 
+  const handlePointerDown = async (event: PointerEvent<HTMLDivElement>) => {
+    // Only intercept if we are clicking on a draggable area (the background or the card header)
+    if ((event.target as HTMLElement).tagName === 'BUTTON') return;
+    
+    pointerStartRef.current = { x: event.screenX, y: event.screenY };
+    hasDraggedRef.current = false;
+    
+    try {
+      const pos = await getCurrentWindow().outerPosition();
+      windowStartRef.current = { x: pos.x, y: pos.y };
+    } catch (error) {
+      console.error("Failed to get window position:", error);
+    }
+
+    if (event.pointerType === 'touch') {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+  };
+
+  const handlePointerMove = async (event: PointerEvent<HTMLDivElement>) => {
+    if (!pointerStartRef.current || !windowStartRef.current) {
+      return;
+    }
+
+    const deltaX = event.screenX - pointerStartRef.current.x;
+    const deltaY = event.screenY - pointerStartRef.current.y;
+    const distance = Math.hypot(deltaX, deltaY);
+
+    if (distance < 4) {
+      return;
+    }
+
+    hasDraggedRef.current = true;
+
+    try {
+      if (event.pointerType === 'mouse') {
+        await getCurrentWindow().startDragging();
+      } else if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+        const newX = windowStartRef.current.x + deltaX;
+        const newY = windowStartRef.current.y + deltaY;
+        await getCurrentWindow().setPosition(new LogicalPosition(newX, newY));
+      }
+    } catch (error) {
+      console.error("Failed to drag summon window:", error);
+    }
+  };
+
+  const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    pointerStartRef.current = null;
+    windowStartRef.current = null;
+    hasDraggedRef.current = false;
+  };
+
   return (
     <div 
       style={{
@@ -55,12 +125,15 @@ export default function Summon() {
         backgroundColor: 'transparent',
         padding: '20px',
         boxSizing: 'border-box',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        touchAction: 'none'
       }}
-      data-tauri-drag-region
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
       <div 
-        data-tauri-drag-region
         style={{
           width: '100%',
           maxWidth: '460px',

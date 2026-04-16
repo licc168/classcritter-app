@@ -3,7 +3,14 @@
   "identifier": "remote-domain",
   "windows": ["main", "floating", "summon", "summon-*"],
   "remote": {
-    "urls": ["https://epet.school", "https://epet.school/*", "http://localhost:3000", "http://localhost:3000/*"]
+    "urls": [
+      "https://flashcardfox.cn",
+      "https://flashcardfox.cn/*",
+      "https://epet.flashcardfox.cn",
+      "https://epet.flashcardfox.cn/*",
+      "http://localhost:3000",
+      "http://localhost:3000/*"
+    ]
   },
   "permissions": [
     "core:default",

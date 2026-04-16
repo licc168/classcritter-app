@@ -67,7 +67,7 @@ fn report_active(app: tauri::AppHandle) {
         let api_url = "http://127.0.0.1:8098/api/public/install/report";
         
         #[cfg(not(debug_assertions))]
-        let api_url = "https://api.epet.school/api/public/install/report";
+        let api_url = "https://epet.flashcardfox.cn/api/public/install/report";
 
         let client = reqwest::Client::new();
         
@@ -275,7 +275,7 @@ pub fn run() {
             let _main_window = WebviewWindowBuilder::new(
                 app,
                 "main",
-                WebviewUrl::External("https://epet.school".parse().unwrap())
+                WebviewUrl::External("https://flashcardfox.cn/".parse().unwrap())
             )
             .title("校园灵宠")
             .inner_size(1280.0, 800.0)
@@ -335,6 +335,7 @@ pub fn run() {
             .inner_size(80.0, 80.0)
             .transparent(true)
             .decorations(false)
+            .shadow(false)
             .always_on_top(true)
             .resizable(false)
             .visible(false)
@@ -351,6 +352,7 @@ pub fn run() {
             .inner_size(500.0, 480.0)
             .transparent(true)
             .decorations(false)
+            .shadow(false)
             .always_on_top(true)
             .resizable(false)
             .visible(false)
