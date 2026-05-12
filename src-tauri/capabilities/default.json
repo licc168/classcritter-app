@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "floating", "summon", "summon-*"],
+  "windows": ["main", "floating", "summon", "summon-*", "pet"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -21,6 +21,8 @@
     "updater:allow-check",
     "updater:allow-download-and-install",
     "process:allow-restart",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
     "core:event:allow-listen",
     "core:event:allow-emit"
   ]

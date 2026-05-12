@@ -394,7 +394,7 @@ pub fn run() {
                 WebviewUrl::App("/floating".into())
             )
             .title("悬浮窗")
-            .inner_size(80.0, 80.0)
+            .inner_size(160.0, 160.0)
             .transparent(true)
             .decorations(false)
             .shadow(false)
@@ -404,6 +404,27 @@ pub fn run() {
             .skip_taskbar(true)
             .build()
             .unwrap();
+
+            let _pet_window = WebviewWindowBuilder::new(
+                app,
+                "pet",
+                WebviewUrl::App("/pet".into())
+            )
+            .title("桌面宠物")
+            .inner_size(800.0, 600.0) // 初始大小不重要，后续会最大化
+            .transparent(true)
+            .decorations(false)
+            .shadow(false)
+            .always_on_top(true)
+            .resizable(true)
+            .visible(true)
+            .skip_taskbar(true)
+            .build()
+            .unwrap();
+            
+            // 关键：全屏并点击穿透
+            _pet_window.set_ignore_cursor_events(true).unwrap();
+            _pet_window.maximize().unwrap();
 
             let _summon_window = WebviewWindowBuilder::new(
                 app,
