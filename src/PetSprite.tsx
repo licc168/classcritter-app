@@ -62,7 +62,6 @@ export function PetSprite({ action, fps: fpsProp, size = 120 }: PetSpriteProps) 
           height: "100%",
           objectFit: "contain",
           imageRendering: "auto",
-          WebkitImageRendering: "-webkit-optimize-contrast",
         }}
         onError={(e) => {
           if (action !== "walk") {

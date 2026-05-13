@@ -8,7 +8,7 @@ export default function Floating() {
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const windowStartRef = useRef<{ x: number; y: number } | null>(null);
   const hasDraggedRef = useRef(false);
-  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const openMenu = () => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);

@@ -39,7 +39,7 @@ export default function PetWindow() {
 
   // 2. 行为大脑（拖拽和交互时暂停）
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     const brainTick = () => {
       if (state === "interacting" || state === "dragging") {
         timer = setTimeout(brainTick, 500);
