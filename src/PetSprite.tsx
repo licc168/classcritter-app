@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export type PetAction = "walk" | "walk_left" | "sleep" | "scratch" | "teaser";
+export type PetAction = "walk" | "walk_left" | "sleep" | "scratch" | "blink" | "teaser" | "jump" | "interact";
 
 interface PetSpriteProps {
   action: PetAction;
@@ -8,20 +8,40 @@ interface PetSpriteProps {
   size?: number;
 }
 
-export function PetSprite({ action, fps = 12, size = 120 }: PetSpriteProps) {
-  const [frame, setFrame] = useState(0);
-  const frameCount = 16;
+const ACTION_CONFIG: Record<string, { frames: number[]; fps: number }> = {
+  walk:      { frames: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], fps: 12 },
+  walk_left: { frames: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], fps: 12 },
+  sleep:     { frames: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], fps: 6 },
+  blink:     { frames: [11], fps: 1 },
+  scratch:   { frames: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], fps: 12 },
+  jump:      { frames: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], fps: 14 },
+  // 交互：用前爪扑打
+  interact:  { frames: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], fps: 16 },
+  teaser:    { frames: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], fps: 12 },
+};
+
+export function PetSprite({ action, fps: fpsProp, size = 120 }: PetSpriteProps) {
+  const [index, setIndex] = useState(0);
+
+  const config = ACTION_CONFIG[action] || ACTION_CONFIG.walk;
+  const frames = config.frames;
+  const fps = fpsProp ?? config.fps;
 
   useEffect(() => {
-    // 切换动作时重置到第一帧
-    setFrame(0);
+    setIndex(0);
+  }, [action]);
+
+  useEffect(() => {
+    if (frames.length <= 1) return; 
     
     const interval = setInterval(() => {
-      setFrame((f) => (f + 1) % frameCount);
+      setIndex((i) => (i + 1) % frames.length);
     }, 1000 / fps);
 
     return () => clearInterval(interval);
-  }, [action, fps]);
+  }, [action, fps, frames.length]);
+
+  const frameIndex = frames[index] ?? frames[0];
 
   return (
     <div
@@ -35,25 +55,18 @@ export function PetSprite({ action, fps = 12, size = 120 }: PetSpriteProps) {
       }}
     >
       <img
-        src={`/assets/pet/${action}/frame_${frame}.png`}
+        src={`/assets/pet/${action}/frame_${frameIndex}.png`}
         alt="pet"
         style={{
           width: "100%",
           height: "100%",
           objectFit: "contain",
-          // 强制使用最高质量缩放算法
-          imageRendering: "high-quality",
-          // 硬件加速，防止位移导致的模糊
-          transform: "translateZ(0)",
-          willChange: "transform",
-          WebkitBackfaceVisibility: "hidden",
-          backfaceVisibility: "hidden",
+          imageRendering: "auto",
+          WebkitImageRendering: "-webkit-optimize-contrast",
         }}
         onError={(e) => {
-          // 如果某个动作图片不存在，回退到 walk
           if (action !== "walk") {
-            console.warn(`Action ${action} not found, falling back to walk`);
-            (e.target as HTMLImageElement).src = `/assets/pet/walk/frame_${frame}.png`;
+            (e.target as HTMLImageElement).src = `/assets/pet/walk/frame_${frameIndex}.png`;
           }
         }}
       />
