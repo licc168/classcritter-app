@@ -48,27 +48,40 @@ export function PetSprite({ action, fps: fpsProp, size = 120 }: PetSpriteProps) 
       style={{
         width: size,
         height: size,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
         overflow: "hidden",
+        position: "relative",
       }}
     >
-      <img
-        src={`/assets/pet/${action}/frame_${frameIndex}.png`}
-        alt="pet"
+      <div
         style={{
-          width: "100%",
+          display: "flex",
+          width: `${frames.length * 100}%`,
           height: "100%",
-          objectFit: "contain",
-          imageRendering: "auto",
+          transform: `translateX(-${(index / frames.length) * 100}%)`,
+          transition: "none",
+          willChange: "transform",
         }}
-        onError={(e) => {
-          if (action !== "walk") {
-            (e.target as HTMLImageElement).src = `/assets/pet/walk/frame_${frameIndex}.png`;
-          }
-        }}
-      />
+      >
+        {frames.map((fIndex) => (
+          <img
+            key={`${action}-${fIndex}`}
+            src={`/assets/pet/${action}/frame_${fIndex}.png`}
+            alt="pet"
+            style={{
+              width: size,
+              height: size,
+              flexShrink: 0,
+              objectFit: "contain",
+              imageRendering: "auto",
+            }}
+            onError={(e) => {
+              if (action !== "walk") {
+                (e.target as HTMLImageElement).src = `/assets/pet/walk/frame_${fIndex}.png`;
+              }
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
