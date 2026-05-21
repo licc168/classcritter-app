@@ -25,12 +25,6 @@ export default function Floating() {
     try { await invoke("restore_main"); } catch (e) { console.error(e); }
   };
 
-  const handleOpenControl = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setMenuOpen(false);
-    try { await invoke("pet_control_cmd"); } catch (e) { console.error(e); }
-  };
-
   const handlePointerDown = async (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     pointerStartRef.current = { x: event.screenX, y: event.screenY };
@@ -107,13 +101,7 @@ export default function Floating() {
                 onClick={(e) => { e.stopPropagation(); handleRestore(); }}
                 color="#3b82f6"
               />
-              <div style={{ height: "1px", background: "rgba(0,0,0,0.06)", margin: "0 12px" }} />
-              <MenuItem
-                emoji="🐱"
-                label="宠物设置"
-                onClick={handleOpenControl}
-                color="#6366f1"
-              />
+
             </motion.div>
           )}
         </AnimatePresence>

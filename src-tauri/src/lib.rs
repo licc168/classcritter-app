@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use tauri::WindowEvent;
 use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_updater::UpdaterExt;
 
@@ -229,6 +229,7 @@ fn hide_summon(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
+#[allow(dead_code)]
 fn test_summon(app: tauri::AppHandle) {
     let mock_payload =
         r#"[{\"studentName\":\"学生张三\",\"message\":\"请立即到办公室一趟！\"}]"#;
@@ -253,20 +254,6 @@ fn show_floating_menu(app: tauri::AppHandle, window: tauri::Window) {
     }
 }
 
-#[tauri::command]
-fn update_pet_position(window: tauri::Window, x: i32, y: i32) {
-    if window.label() == "pet" {
-        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(x, y)));
-    }
-}
-
-#[tauri::command]
-fn pet_control_cmd(app: tauri::AppHandle) {
-    if let Some(win) = app.get_webview_window("control") {
-        let _ = win.show();
-        let _ = win.set_focus();
-    }
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -275,7 +262,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![trigger_summon, hide_main_show_floating, restore_main, hide_summon, check_for_updates, get_machine_id_cmd, show_floating_menu, update_pet_position, pet_control_cmd])
+        .invoke_handler(tauri::generate_handler![trigger_summon, hide_main_show_floating, restore_main, hide_summon, check_for_updates, get_machine_id_cmd, show_floating_menu])
         .on_menu_event(|app, event| match event.id.as_ref() {
             "hide" => {
                 if let Some(win) = app.get_webview_window("main") {
@@ -300,54 +287,37 @@ pub fn run() {
                     let _ = floating_win.hide();
                 }
             }
-            "pet_control" => {
-                if let Some(win) = app.get_webview_window("control") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                }
-            }
-            "pet_toggle" => {
-                let _ = app.emit("pet:toggle", ());
-            }
-            "pet_scale_up" => {
-                let _ = app.emit("pet:scale", 0.2);
-            }
-            "pet_scale_down" => {
-                let _ = app.emit("pet:scale", -0.2);
-            }
             _ => {}
         })
         .setup(|app| {
             // 初始化系统托盘
             if let Ok(show_i) = MenuItem::with_id(app, "show", "🏠  显示主界面", true, None::<&str>) {
-                if let Ok(pet_control_i) = MenuItem::with_id(app, "pet_control", "🐱  宠物设置", true, None::<&str>) {
-                    if let Ok(quit_i) = MenuItem::with_id(app, "quit", "❌  完全退出", true, None::<&str>) {
-                        if let Ok(sep) = tauri::menu::PredefinedMenuItem::separator(app) {
-                            if let Ok(tray_menu) = Menu::with_items(app, &[&show_i, &pet_control_i, &sep, &quit_i]) {
-                                let _tray = TrayIconBuilder::new()
-                                    .icon(app.default_window_icon().unwrap().clone())
-                                    .menu(&tray_menu)
-                                    .tooltip("校园灵宠")
-                                    .on_tray_icon_event(|tray, event| {
-                                        if let TrayIconEvent::Click {
-                                            button: MouseButton::Left,
-                                            button_state: MouseButtonState::Up,
-                                            ..
-                                        } = event
-                                        {
-                                            let app = tray.app_handle();
-                                            if let Some(main_win) = app.get_webview_window("main") {
-                                                let _ = main_win.show();
-                                                let _ = main_win.unminimize();
-                                                let _ = main_win.set_focus();
-                                            }
-                                            if let Some(floating_win) = app.get_webview_window("floating") {
-                                                let _ = floating_win.hide();
-                                            }
+                if let Ok(quit_i) = MenuItem::with_id(app, "quit", "❌  完全退出", true, None::<&str>) {
+                    if let Ok(sep) = tauri::menu::PredefinedMenuItem::separator(app) {
+                        if let Ok(tray_menu) = Menu::with_items(app, &[&show_i, &sep, &quit_i]) {
+                            let _tray = TrayIconBuilder::new()
+                                .icon(app.default_window_icon().unwrap().clone())
+                                .menu(&tray_menu)
+                                .tooltip("校园灵宠")
+                                .on_tray_icon_event(|tray, event| {
+                                    if let TrayIconEvent::Click {
+                                        button: MouseButton::Left,
+                                        button_state: MouseButtonState::Up,
+                                        ..
+                                    } = event
+                                    {
+                                        let app = tray.app_handle();
+                                        if let Some(main_win) = app.get_webview_window("main") {
+                                            let _ = main_win.show();
+                                            let _ = main_win.unminimize();
+                                            let _ = main_win.set_focus();
                                         }
-                                    })
-                                    .build(app);
-                            }
+                                        if let Some(floating_win) = app.get_webview_window("floating") {
+                                            let _ = floating_win.hide();
+                                        }
+                                    }
+                                })
+                                .build(app);
                         }
                     }
                 }
@@ -390,14 +360,7 @@ pub fn run() {
             let paste_i = MenuItem::with_id(app, "paste", "粘贴", true, Some("Command+V"))?;
             edit_menu.append_items(&[&undo_i, &redo_i, &cut_i, &copy_i, &paste_i])?;
 
-            let pet_menu = Submenu::with_id(app, "pet_settings", "宠物设置", true)?;
-            let control_i = MenuItem::with_id(app, "pet_control", "打开控制面板", true, Some("Command+Shift+C"))?;
-            let toggle_i = MenuItem::with_id(app, "pet_toggle", "显示/隐藏宠物", true, Some("Command+Shift+P"))?;
-            let scale_up_i = MenuItem::with_id(app, "pet_scale_up", "放大宠物 (+20%)", true, Some("Command+Plus"))?;
-            let scale_down_i = MenuItem::with_id(app, "pet_scale_down", "缩小宠物 (-20%)", true, Some("Command+Minus"))?;
-            pet_menu.append_items(&[&control_i, &toggle_i, &scale_up_i, &scale_down_i])?;
-
-            let main_menu = Menu::with_items(app, &[&app_menu, &edit_menu, &pet_menu])?;
+            let main_menu = Menu::with_items(app, &[&app_menu, &edit_menu])?;
             app.set_menu(main_menu)?; // 设置全局应用菜单
 
             let _main_window = WebviewWindowBuilder::new(
@@ -471,29 +434,7 @@ pub fn run() {
             .build()
             .unwrap();
 
-            let _pet_window = WebviewWindowBuilder::new(
-                app,
-                "pet",
-                WebviewUrl::App("/pet".into())
-            )
-            .title("桌面宠物")
-            .inner_size(800.0, 600.0) // 初始大小不重要，后续会最大化
-            .transparent(true)
-            .decorations(false)
-            .shadow(false)
-            .always_on_top(true)
-            .resizable(true)
-            .visible(true)
-            .skip_taskbar(true)
-            .build()
-            .unwrap();
-            
-            _pet_window.set_always_on_top(true).unwrap(); // 显式再次强制置顶
-            // 窗口设为大尺寸（支持放大），关闭点击穿透，允许交互
-            _pet_window.set_ignore_cursor_events(false).unwrap();
-            _pet_window.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(500, 500))).unwrap();
-            // 初始位置向上调一点，防止掉到屏幕下面
-            _pet_window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(100, 400))).unwrap();
+
 
             let _summon_window = WebviewWindowBuilder::new(
                 app,
@@ -512,22 +453,6 @@ pub fn run() {
             .build()
             .unwrap();
 
-            let _control_window = WebviewWindowBuilder::new(
-                app,
-                "control",
-                WebviewUrl::App("/control".into())
-            )
-            .title("宠物控制面板")
-            .inner_size(240.0, 100.0)
-            .transparent(true)
-            .decorations(false)
-            .shadow(false)
-            .always_on_top(true)
-            .resizable(false)
-            .visible(false)
-            .center()
-            .build()
-            .unwrap();
 
             Ok(())
         })
